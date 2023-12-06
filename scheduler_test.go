@@ -73,11 +73,32 @@ func TestSchedulerTimeBasedTriggering(t *testing.T) {
 }
 
 func TestSchedulerDependencyManagement(t *testing.T) {
-	// Mock steps with dependencies
-	stepA := models.Step{Dependencies: []int{}}
-	stepB := models.Step{Dependencies: []int{1}} // Depends on step A
-
 	db, err := database.NewDB("meta.db")
+
+	sampleStartDate := time.Now()
+	sampleEndDate := sampleStartDate.Add(24 * time.Hour) // Example: 24 hours later
+
+	// Mock steps with complete data
+	stepA := models.Step{
+		Name:         "Step A",
+		MapID:        1,         // Assuming a sample Map ID
+		State:        "pending", // Or any initial state
+		Command:      "echo Step A",
+		StartDate:    sampleStartDate,
+		EndDate:      sampleEndDate,
+		Dependencies: []int{},
+	}
+
+	stepB := models.Step{
+		Name:         "Step B",
+		MapID:        1,         // Same Map ID as Step A
+		State:        "pending", // Or any initial state
+		Command:      "echo Step B",
+		StartDate:    sampleStartDate,
+		EndDate:      sampleEndDate,
+		Dependencies: []int{}, // To be set after Step A's ID is known
+	}
+
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
@@ -94,11 +115,13 @@ func TestSchedulerDependencyManagement(t *testing.T) {
 	}
 	stepA.ID = stepAID
 	fmt.Printf("Added step A with ID: %d\n", stepAID)
+	stepB.Dependencies = []int{stepAID}
 
 	stepBID, err := db.AddStep(&stepB)
 	if err != nil {
 		log.Fatalf("Failed to add step B: %v", err)
 	}
+
 	stepB.ID = stepBID
 	fmt.Printf("Added step B with ID: %d\n", stepBID)
 
@@ -109,14 +132,24 @@ func TestSchedulerDependencyManagement(t *testing.T) {
 
 	scheduler := scheduler.NewScheduler(db, 10)
 
+	// simulating first step completion
+	stepA.State = "completed"
+	err = db.UpdateStep(stepA)
+	if err != nil {
+		log.Fatalf("Failed to simulate step A completion: %v", err)
+	}
 	// Simulate scheduling
 	scheduler.ScheduleMap(mockMap)
 
-	// Verify the task queue order
 	firstTask := <-scheduler.TaskQueue
+	log.Printf("Received first task: %+v", firstTask)
+
 	secondTask := <-scheduler.TaskQueue
+	log.Printf("Received second task: %+v", secondTask)
 
 	if firstTask.ID != stepA.ID || secondTask.ID != stepB.ID {
 		t.Errorf("Tasks were not queued in the correct order.")
+	} else {
+		t.Log("Scheduler correctly identified map to run")
 	}
 }

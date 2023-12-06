@@ -36,9 +36,9 @@ func (w *Worker) ExecuteTask(step models.Step) {
 
 func (w *Worker) performTaskAction(step models.Step) error {
 	// Retrieve the base path for scripts from an environment variable
-	basePath := os.Getenv("STEP_SCRIPT_PATH")
+	basePath := os.Getenv("PROJECT_PATH")
 	if basePath == "" {
-		log.Println("STEP_SCRIPT_PATH environment variable is not set.")
+		log.Println("PROJECT_PATH environment variable is not set.")
 		return errors.New("script base path not configured")
 	}
 

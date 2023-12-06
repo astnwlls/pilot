@@ -2,6 +2,8 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
+	"log"
 
 	"pilot/pkg/models"
 
@@ -37,7 +39,7 @@ func createMapsTable(db *sql.DB) error {
 func createStepsTable(db *sql.DB) error {
 	query := `
     CREATE TABLE IF NOT EXISTS steps (
-        id INT PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         map_id INT,
         name VARCHAR(255),
         state VARCHAR(255),
@@ -75,12 +77,14 @@ func (db *DB) AddStep(task *models.Step) (int, error) {
 	insertQuery := `INSERT INTO steps (name, map_id, state, start_date, end_date) VALUES (?, ?, ?, ?, ?)`
 	result, err := db.conn.Exec(insertQuery, task.Name, task.MapID, task.State, task.StartDate, task.EndDate)
 	if err != nil {
+		log.Printf("Error adding step to database: %v", err)
 		return 0, err
 	}
 
 	// Retrieve the last insert id
 	id, err := result.LastInsertId()
 	if err != nil {
+		log.Printf("Error getting last insert ID: %v", err)
 		return 0, err
 	}
 
@@ -141,6 +145,7 @@ func (db *DB) GetStepsByMapID(id int) ([]models.Step, error) {
 func (db *DB) GetStepByID(id int) (*models.Step, error) {
 	var step models.Step
 	query := `SELECT id, name, map_id, state, start_date, end_date FROM steps WHERE id = ?`
+	fmt.Printf("GetStepByID: %d\n", id)
 	row := db.conn.QueryRow(query, id)
 
 	err := row.Scan(&step.ID, &step.Name, &step.MapID, &step.State, &step.StartDate, &step.EndDate)
@@ -156,30 +161,30 @@ func (db *DB) GetStepByID(id int) (*models.Step, error) {
 }
 
 // Updatemap modifies an existing map
-func UpdateMap(db *sql.DB, m models.Map) error {
+func (db *DB) UpdateMap(m models.Map) error {
 	query := `UPDATE maps SET name = ?, schedule_interval = ?, is_active = ?, start_date = ? WHERE id = ?`
-	_, err := db.Exec(query, m.Name, m.ScheduleInterval, m.IsActive, m.StartDate, m.ID)
+	_, err := db.conn.Exec(query, m.Name, m.ScheduleInterval, m.IsActive, m.StartDate, m.ID)
 	return err
 }
 
 // UpdateStep modifies an existing task
-func UpdateStep(db *sql.DB, step models.Step) error {
+func (db *DB) UpdateStep(step models.Step) error {
 	query := `UPDATE steps SET name = ?, map_id = ?, state = ?, start_date = ?, end_date = ? WHERE id = ?`
-	_, err := db.Exec(query, step.Name, step.MapID, step.State, step.StartDate, step.EndDate, step.ID)
+	_, err := db.conn.Exec(query, step.Name, step.MapID, step.State, step.StartDate, step.EndDate, step.ID)
 	return err
 }
 
 // Deletemap removes a map from the database
-func Deletemap(db *sql.DB, id int) error {
+func (db *DB) DeleteMap(id int) error {
 	query := `DELETE FROM maps WHERE id = ?`
-	_, err := db.Exec(query, id)
+	_, err := db.conn.Exec(query, id)
 	return err
 }
 
 // DeleteStep removes a task from the database
-func DeleteStep(db *sql.DB, id int) error {
+func (db *DB) DeleteStep(id int) error {
 	query := `DELETE FROM steps WHERE id = ?`
-	_, err := db.Exec(query, id)
+	_, err := db.conn.Exec(query, id)
 	return err
 }
 

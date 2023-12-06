@@ -69,10 +69,13 @@ func (s *Scheduler) ScheduleMap(m models.Map) {
 		for _, step := range m.Steps {
 			if s.dependenciesMet(step) {
 				s.TaskQueue <- step
+			} else {
+				log.Printf("Dependencies not met for step: %+v", step)
 			}
 		}
+	} else {
+		log.Println("Map is not scheduled to run at this time.")
 	}
-	// Additional logic as needed
 }
 
 func (s *Scheduler) dependenciesMet(step models.Step) bool {
