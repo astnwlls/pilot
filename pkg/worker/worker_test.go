@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"pilot/pkg/models"
@@ -10,17 +11,13 @@ import (
 // Import statements...
 
 func TestExecuteTask(t *testing.T) {
-	// Set the path to your mock scripts
-	os.Setenv("STEP_SCRIPT_PATH", "/path/to/mock/scripts")
+	os.Setenv("PROJECT_PATH", `C:\Users\AWills\Documents\pilot\maps`)
 
-	// Create a mock step
 	mockStep := models.Step{
 		ID:      1,
-		Command: "mock_step.py", // Use the mock step script
-		// Other fields if necessary
+		Command: "main.py", // Use the mock step script
 	}
 
-	// Set up your logger and worker instance
 	logger := log.New(os.Stdout, "test-logger: ", log.LstdFlags)
 	worker := Worker{
 		TaskQueue:      make(chan models.Step, 1),
@@ -28,11 +25,8 @@ func TestExecuteTask(t *testing.T) {
 		Logger:         logger,
 	}
 
-	// Enqueue the mock step
 	worker.TaskQueue <- mockStep
 
-	// Execute the task
-	go worker.ExecuteTask(mockStep)
-
-	// Implement any additional assertions or checks as needed
+	fmt.Printf("Starting task here")
+	worker.ExecuteTask(mockStep)
 }

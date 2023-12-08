@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"fmt"
 	"log"
 	"pilot/internal/database"
 	"pilot/pkg/models"
@@ -11,19 +12,22 @@ import (
 )
 
 type Scheduler struct {
-	db        *database.DB
-	TaskQueue chan models.Step
-	nowFunc   func() time.Time
-	// other fields
+	db            *database.DB
+	TaskQueue     chan models.Step
+	nowFunc       func() time.Time
+	QueueTaskFunc func(models.Step)
+	TaskCompleted chan int
 }
 
 func NewScheduler(db *database.DB, taskQueueSize int) *Scheduler {
-	return &Scheduler{
-		db:        db,
-		TaskQueue: make(chan models.Step, taskQueueSize),
-		nowFunc:   time.Now,
-		// initialize other fields
+	scheduler := &Scheduler{
+		db:            db,
+		TaskQueue:     make(chan models.Step, taskQueueSize),
+		nowFunc:       time.Now,
+		TaskCompleted: make(chan int, taskQueueSize),
 	}
+	scheduler.QueueTaskFunc = scheduler.defaultQueueTask
+	return scheduler
 }
 
 func (s *Scheduler) SetNowFunc(f func() time.Time) {
@@ -35,27 +39,30 @@ func (s *Scheduler) Start() {
 		// 1. Fetch all active DAGs from the database
 		maps, err := s.db.GetActiveMaps()
 		if err != nil {
-			// handle error
+			log.Println("Error getting active Maps:", err)
 		}
 
 		// 2. Iterate through each Map and determine if any tasks are ready to run
 		for _, m := range maps {
 			if s.IsTimeToRun(m) {
+				fmt.Printf("checking map: %d\n", m.ID)
 				tasks, err := s.db.GetStepsByMapID(m.ID)
 				if err != nil {
-					// handle error
+					log.Println("Error getting Steps by Map ID:", err)
 				}
 
 				for _, task := range tasks {
 					depsMet, err := s.db.DependenciesMet(task)
 					if err != nil {
-						// handle error
+						log.Println("Error checking if Deps met:", err)
 					}
 
 					if depsMet {
-						s.queueTask(task)
+						s.QueueTask(task)
 					}
 				}
+			} else {
+				fmt.Println("it is not time to run...")
 			}
 		}
 
@@ -110,6 +117,12 @@ func (s *Scheduler) IsTimeToRun(m models.Map) bool {
 	return now.After(nextRun) || now.Equal(nextRun)
 }
 
-func (s *Scheduler) queueTask(step models.Step) {
+// Default queuing logic as a method of Scheduler
+func (s *Scheduler) defaultQueueTask(step models.Step) {
 	s.TaskQueue <- step
+}
+
+// Call this method to queue a task
+func (s *Scheduler) QueueTask(step models.Step) {
+	s.QueueTaskFunc(step) // Use the function field here.
 }

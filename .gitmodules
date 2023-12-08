@@ -1,0 +1,3 @@
+[submodule "submodules/statsbombpy"]
+	path = submodules/statsbombpy
+	url = https://github.com/astnwlls/statsbombpy.git

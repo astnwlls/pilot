@@ -2,7 +2,6 @@ package database
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 
 	"pilot/pkg/models"
@@ -16,6 +15,8 @@ type DB struct {
 
 func NewDB(dataSourceName string) (*DB, error) {
 	db, err := sql.Open("sqlite3", dataSourceName)
+	createTables(db)
+
 	if err != nil {
 		return nil, err
 	}
@@ -52,14 +53,14 @@ func createStepsTable(db *sql.DB) error {
 	return err
 }
 
-func (db *DB) CreateTables() error {
+func createTables(db *sql.DB) error {
 	var createErr error
 
-	if err := createMapsTable(db.conn); err != nil {
+	if err := createMapsTable(db); err != nil {
 		createErr = err
 	}
 
-	if err := createStepsTable(db.conn); err != nil {
+	if err := createStepsTable(db); err != nil {
 		createErr = err
 	}
 
@@ -145,7 +146,6 @@ func (db *DB) GetStepsByMapID(id int) ([]models.Step, error) {
 func (db *DB) GetStepByID(id int) (*models.Step, error) {
 	var step models.Step
 	query := `SELECT id, name, map_id, state, start_date, end_date FROM steps WHERE id = ?`
-	fmt.Printf("GetStepByID: %d\n", id)
 	row := db.conn.QueryRow(query, id)
 
 	err := row.Scan(&step.ID, &step.Name, &step.MapID, &step.State, &step.StartDate, &step.EndDate)
@@ -170,7 +170,22 @@ func (db *DB) UpdateMap(m models.Map) error {
 // UpdateStep modifies an existing task
 func (db *DB) UpdateStep(step models.Step) error {
 	query := `UPDATE steps SET name = ?, map_id = ?, state = ?, start_date = ?, end_date = ? WHERE id = ?`
-	_, err := db.conn.Exec(query, step.Name, step.MapID, step.State, step.StartDate, step.EndDate, step.ID)
+	result, err := db.conn.Exec(query, step.Name, step.MapID, step.State, step.StartDate, step.EndDate, step.ID)
+	if err != nil {
+		// Detailed logging of the error
+		log.Printf("Failed to update step: %v, error: %v\n", step, err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Failed to retrieve affected rows for step: %v, error: %v\n", step, err)
+		return err
+	}
+	if rowsAffected == 0 {
+		log.Printf("No rows affected for step: %v\n", step)
+	}
+
 	return err
 }
 
