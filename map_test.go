@@ -23,41 +23,40 @@ func TestMapExecutionFlow(t *testing.T) {
 	scheduler := scheduler.NewScheduler(db, 10)
 
 	startDate := time.Now()
-	endDate := startDate.Add(24 * time.Hour) // 24 hours later
+	endDate := startDate.Add(24 * time.Hour)
 
 	// Define a mock map with steps
 	step1 := models.Step{
 		Name:         "Step 1",
-		MapID:        1,         // Same Map ID as Step A
-		State:        "pending", // Or any initial state
+		MapID:        1,
+		State:        "pending",
 		Command:      "xerox/step1.py",
 		StartDate:    startDate,
 		EndDate:      endDate,
-		Dependencies: []int{}, // To be set after Step A's ID is known
-
+		Dependencies: []int{},
 	}
 	step1ID, err := db.AddStep(&step1)
 	fmt.Printf("Added step A with ID: %d\n", step1ID)
 
 	step2 := models.Step{
 		Name:         "Step 2",
-		MapID:        1,         // Same Map ID as Step A
-		State:        "pending", // Or any initial state
+		MapID:        1,
+		State:        "pending",
 		Command:      "xerox/step2.py",
 		StartDate:    startDate,
 		EndDate:      endDate,
-		Dependencies: []int{step1ID}, // To be set after Step A's ID is known
+		Dependencies: []int{step1ID},
 	}
 	step2ID, err := db.AddStep(&step2)
 
 	step3 := models.Step{
 		Name:         "Step 3",
-		MapID:        1,         // Same Map ID as Step A
-		State:        "pending", // Or any initial state
+		MapID:        1,
+		State:        "pending",
 		Command:      "xerox/step3.py",
 		StartDate:    startDate,
 		EndDate:      endDate,
-		Dependencies: []int{step1ID, step2ID}, // To be set after Step A's ID is known
+		Dependencies: []int{step1ID, step2ID},
 	}
 	step3ID, err := db.AddStep(&step3)
 
@@ -79,10 +78,8 @@ func TestMapExecutionFlow(t *testing.T) {
 	// Override QueueTaskFunc for testing
 	scheduler.QueueTaskFunc = func(step models.Step) {
 		fmt.Printf("Queueing task: %+v\n", step)
-		// Original queueing logic
 		scheduler.TaskQueue <- step
 
-		// Test monitoring logic
 		taskOrder = append(taskOrder, step.ID)
 		if len(taskOrder) == len(mockMap.Steps) {
 			done <- true
